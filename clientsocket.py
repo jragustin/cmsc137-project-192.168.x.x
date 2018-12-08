@@ -24,6 +24,7 @@ def menu():
 
 def receive(client,chat):
 	# print(chat)
+	
 	serverDown = False
 	while clientRunning and (not serverDown):
 		try:
@@ -31,7 +32,6 @@ def receive(client,chat):
 			chat.ParseFromString(r)
 			if(chat.type==TCPPackets.CHAT):
 				print("\n",chat.player.name, ">",chat.message)
-				
 			elif(chat.type==TCPPackets.ERR_LDNE):
 				print(chat.err_msg)
 			elif(chat.type==TCPPackets.ERR_LFULL):
@@ -85,7 +85,6 @@ if __name__ == '__main__':
 			#make a thread for recv and send
 			#disconnect
 			createLobby.ParseFromString(r)
-			
 			if (createLobby.type==TCPPackets.CREATE_LOBBY):
 				TCPPackets.type=TCPPackets.CONNECT
 				conn = TCPPackets.ConnectPacket()
@@ -127,6 +126,17 @@ if __name__ == '__main__':
 							client.send(s)
 							# print("\nYou>", chat.message)
 							break
+						elif(chat.message=="players"):
+							players =TCPPackets.PlayerListPacket()
+							players.type=TCPPackets.PLAYER_LIST
+							s = players.SerializeToString()
+							client.send(s)
+							r = client.recv(BUFF)
+							players.ParseFromString(r)
+							i = 0
+							while(i<len(players.player_list)):
+								print(i, ".", players.player_list[i].name)
+								i+=1
 						else:
 							# pprint(chat)
 							s = chat.SerializeToString()
@@ -138,6 +148,12 @@ if __name__ == '__main__':
 					print(conn.err_msg)
 				elif(conn.type==TCPPackets.ERR):
 					print(conn.err_msg)
+			elif(createLobby.type==TCPPackets.ERR_LDNE):
+				print(createLobby.err_msg)
+			elif(createLobby.type==TCPPackets.ERR_LFULL):
+				print(createLobby.err_msg)
+			elif(createLobby.type==TCPPackets.ERR):
+				print(createLobby.lobby_id)
 
 
 					
@@ -152,19 +168,19 @@ if __name__ == '__main__':
 			#check the type of the received packet
 			# Disconnect 
 			clientRunning=True
-			print("connecting...")
 			TCPPackets.type=TCPPackets.CONNECT
 			conn = TCPPackets.ConnectPacket()
 			conn.type=TCPPackets.CONNECT
 			conn.lobby_id=input("Enter Lobby ID: ")
 			name=input("Player name: ")
 			conn.player.name=name
+			print("connecting...")
 			s = conn.SerializeToString()
 			client.send(s)
 			r = client.recv(BUFF)
-
+			# print(r)
 			conn.ParseFromString(r)
-
+			# print(conn)
 			if(conn.type==TCPPackets.CONNECT):
 				TCPPackets.type=TCPPackets.CHAT
 				chat = TCPPackets.ChatPacket()
@@ -194,14 +210,25 @@ if __name__ == '__main__':
 						client.send(s)
 						# print("\nYou>", chat.message)
 						break
+					elif(chat.message=="players"):
+						players =TCPPackets.PlayerListPacket()
+						players.type=TCPPackets.PLAYER_LIST
+						s = players.SerializeToString()
+						client.send(s)
+						r = client.recv(BUFF)
+						players.ParseFromString(r)
+						i = 0
+						while(i<len(players.player_list)):
+							print(i, ".", players.player_list[i].name)
+							i+=1
 					else:
 						s = chat.SerializeToString()
 						client.send(s)
 						# print("\nYou>", chat.message)
 			elif(conn.type==TCPPackets.ERR_LDNE):
-				print(conn.err_msg)
+				print(conn)
 			elif(conn.type==TCPPackets.ERR_LFULL):
-				print(conn.err_msg)
+				print("The chat lobby is already full")
 			elif(conn.type==TCPPackets.ERR):
 				print(conn.err_msg)
 		else:
