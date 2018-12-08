@@ -29,10 +29,19 @@ def receive(client,chat):
 		try:
 			r = client.recv(BUFF)
 			chat.ParseFromString(r)
-			print(chat.player.name, ">",chat.message)
+			if(chat.type==TCPPackets.CHAT):
+				print("\n",chat.player.name, ">",chat.message)
+				
+			elif(chat.type==TCPPackets.ERR_LDNE):
+				print(chat.err_msg)
+			elif(chat.type==TCPPackets.ERR_LFULL):
+				print(chat.err_msg)
+			elif(chat.type==TCPPackets.ERR):
+					print(chat.err_msg)
+
 		except Exception as e:
 			print(e)
-			print('Server is Down. You are now Disconnected. Press enter to exit...')
+			# print('Server is Down. You are now Disconnected. Press enter to exit...')
 			# serverDown = True
 
 
@@ -77,7 +86,7 @@ if __name__ == '__main__':
 			#disconnect
 			createLobby.ParseFromString(r)
 			
-			if (createLobby.type==2):
+			if (createLobby.type==TCPPackets.CREATE_LOBBY):
 				TCPPackets.type=TCPPackets.CONNECT
 				conn = TCPPackets.ConnectPacket()
 				conn.type=TCPPackets.CONNECT
@@ -94,32 +103,38 @@ if __name__ == '__main__':
 				if(conn.type==TCPPackets.CONNECT):
 					TCPPackets.type=TCPPackets.CHAT
 					chat = TCPPackets.ChatPacket()
-					chat.type=TCPPackets.type
-					chat.player.name = conn.player.name
-					chat.player.id = conn.player.id
-					os.system("clear")
+					# pprint(chat)
+					# os.system("clear")
 					print("You've created a chat lobby with the lobby ID of ", conn.lobby_id)
 
 					thread_receive = Thread(target=receive, args=[client,chat])
 					thread_receive.start()
 
 					while clientRunning:
+						TCPPackets.type=TCPPackets.CHAT
+						chat = TCPPackets.ChatPacket()
+						chat.type=TCPPackets.type
+						chat.player.name = conn.player.name
+						chat.player.id = conn.player.id
 						chat.message = input()
-						
 						if(chat.message.lower()=="quit"): 
 							clientRunning=False
 							chat.message = "**quit"
-							s = chat.SerializeToString()
+							discon = TCPPackets.DisconnectPacket()
+							discon.type=TCPPackets.DISCONNECT
+							
+							s = discon.SerializeToString()
 							client.send(s)
 							# print("\nYou>", chat.message)
 							break
 						else:
+							# pprint(chat)
 							s = chat.SerializeToString()
 							client.send(s)
 							# print("\nYou>", chat.message)
 				elif(conn.type==TCPPackets.ERR_LDNE):
 					print(conn.err_msg)
-				elif(conn.type==TCPPackets.ERRLFULL):
+				elif(conn.type==TCPPackets.ERR_LFULL):
 					print(conn.err_msg)
 				elif(conn.type==TCPPackets.ERR):
 					print(conn.err_msg)
@@ -156,19 +171,26 @@ if __name__ == '__main__':
 				chat.type=TCPPackets.type
 				chat.player.name = conn.player.name
 				chat.player.id = conn.player.id
-				os.system("clear")
+				# os.system("clear")
 				print("You joined in the lobby ", conn.lobby_id)
 
 				thread_receive = Thread(target=receive, args=[client,chat])
 				thread_receive.start()
 
 				while clientRunning:
+
+					chat.type=TCPPackets.type
+					chat.player.name = conn.player.name
+					chat.player.id = conn.player.id
 					chat.message = input()
 					
 					if(chat.message.lower()=="quit"): 
 						clientRunning=False
 						chat.message = "**quit"
-						s = chat.SerializeToString()
+						discon = TCPPackets.DisconnectPacket()
+						discon.type=TCPPackets.DISCONNECT
+						print(discon.type)
+						s = discon.SerializeToString()
 						client.send(s)
 						# print("\nYou>", chat.message)
 						break
@@ -178,7 +200,7 @@ if __name__ == '__main__':
 						# print("\nYou>", chat.message)
 			elif(conn.type==TCPPackets.ERR_LDNE):
 				print(conn.err_msg)
-			elif(conn.type==TCPPackets.ERRLFULL):
+			elif(conn.type==TCPPackets.ERR_LFULL):
 				print(conn.err_msg)
 			elif(conn.type==TCPPackets.ERR):
 				print(conn.err_msg)
